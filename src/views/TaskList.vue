@@ -1,6 +1,6 @@
 <template>
   <div>
-    <add-task @add-task="(task: Task) => tasks.push(task)"></add-task>
+    <add-task @add-task="createTask"></add-task>
     <user-task
       v-for="task in tasks"
       :key="task.id"
@@ -17,17 +17,16 @@ import { ref, onMounted } from 'vue'
 import AddTask from '@/components/AddTask.vue'
 import UserTask from '@/components/UserTask.vue'
 
+import { useJsonPlaceholder } from '@/services/api/jsonPlaceholder.service';
+
 import type { Task } from '@/types/task';
+
+const jsonPlaceholder = useJsonPlaceholder('comments');
 
 const tasks = ref<Task[]>([])
 
-const deleteTask = (taskId: number) => {
-  tasks.value = tasks.value.filter((task) => task.id != taskId)
-}
-
-onMounted(async () => {
-  const commentQuery = await fetch('https://jsonplaceholder.typicode.com/comments?_limit=10')
-  const comments = await commentQuery.json();
+const getTasks = async () => {
+  const comments = await jsonPlaceholder.getItems(10);
   comments.forEach((comment: any) => {
     tasks.value.push({
       id: comment.id,
@@ -35,7 +34,30 @@ onMounted(async () => {
       content: comment.body
     })
   });
+}
+
+const deleteTask = async (taskId: number) => {
+  tasks.value = tasks.value.filter((task) => task.id != taskId)
+  await getTasks();
+}
+
+onMounted(async () => {
+  await getTasks();
 })
+
+const createTask = async (task: Task) => {
+  try {
+    await jsonPlaceholder.addItem({
+      postId: 1,
+      name: task.title,
+      email: 'example@gmail.com',
+      body: task.content
+    });
+    await getTasks();
+  } catch(e) {
+    console.log('error', e);
+  }
+}
 </script>
 
 <style scoped></style>
